@@ -1,27 +1,20 @@
-# THAS Company Verification Plugin
+# TrustOS LinkedIn Integration
 
-A Node.js plugin for verifying company information using multiple data sources.
+A web application that integrates with LinkedIn's Pages Data Portability API to manage and automate LinkedIn page data and connection requests.
 
 ## Features
 
-- Company verification using OpenCorporates API
-- Caching with Redis for improved performance
-- MongoDB storage for verification results
-- RESTful API endpoints
-- Extensible architecture for adding more verification sources
+- LinkedIn Pages Data Portability API integration
+- Automated connection request management
+- Data portability and export capabilities
+- Secure API key management
 
-## Prerequisites
-
-- Node.js (v14 or higher)
-- MongoDB
-- Redis
-
-## Installation
+## Setup
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd thas-plugin
+git clone git@github.com:BTheCoderr/TOS.git
+cd TOS
 ```
 
 2. Install dependencies:
@@ -29,52 +22,23 @@ cd thas-plugin
 npm install
 ```
 
-3. Configure environment variables:
-- Copy `.env.example` to `.env`
-- Update the variables with your configuration
-
-## Configuration
-
-Update the `.env` file with your settings:
-
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/thas-plugin
-REDIS_URL=redis://localhost:6379
-OPENCORPORATES_API_URL=https://api.opencorporates.com/v0.4
-OPENCORPORATES_API_KEY=your_api_key_here
+3. Copy `.env.example` to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
 ```
 
-## Usage
+4. Configure your LinkedIn API credentials in `.env`
 
-### Development
+## Environment Variables
+
+See `.env.example` for required environment variables.
+
+## Development
+
 ```bash
 npm run dev
 ```
 
-### Production
-```bash
-npm start
-```
-
-## API Endpoints
-
-### Verify Company
-```
-POST /api/companies/verify
-Content-Type: application/json
-
-{
-  "companyName": "Example Corp",
-  "registrationNumber": "12345678"
-}
-```
-
-### Get Verification Status
-```
-GET /api/companies/:registrationNumber
-```
-
 ## License
 
-ISC 
+MIT License - see LICENSE file for details 
