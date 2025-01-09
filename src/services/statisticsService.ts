@@ -1,5 +1,6 @@
 import { JobPostingFlag } from '../types/jobPosting';
 import { VerificationStats, DetailedStats, StatsCache } from '../types/statistics';
+import { logger } from '../utils/logger';
 
 export class StatisticsService {
   private readonly cache: StatsCache;
@@ -39,38 +40,46 @@ export class StatisticsService {
     }
   }
 
-  async recordVerification(isVerified: boolean, confidence: number, flags: JobPostingFlag[]) {
-    this.stats.totalVerifications++;
-    
-    if (isVerified) {
-      this.stats.verifiedJobs++;
-    }
-    
-    if (flags.length > 0) {
-      this.stats.flaggedJobs++;
-    }
-
-    // Update average confidence
-    this.stats.averageConfidence = (
-      (this.stats.averageConfidence * (this.stats.totalVerifications - 1) + confidence) /
-      this.stats.totalVerifications
-    );
-
-    // Update flag counts
-    flags.forEach(flag => {
-      const existingFlag = this.stats.commonFlags.find(f => f.type === flag.type);
-      if (existingFlag) {
-        existingFlag.count++;
-      } else {
-        this.stats.commonFlags.push({ type: flag.type, count: 1 });
+  async recordVerification(
+    verificationStatus: 'VERIFIED' | 'PENDING' | 'FAILED',
+    confidence: number,
+    flags: JobPostingFlag[] = []
+  ): Promise<void> {
+    try {
+      const stats = await this.getStats();
+      
+      // Update verification counts
+      stats.totalVerifications++;
+      if (verificationStatus === 'VERIFIED') {
+        stats.verifiedJobs++;
       }
-    });
+      if (flags.length > 0) {
+        stats.flaggedJobs++;
+      }
 
-    // Sort flags by count
-    this.stats.commonFlags.sort((a, b) => b.count - a.count);
+      // Update confidence average
+      stats.averageConfidence = (
+        (stats.averageConfidence * (stats.totalVerifications - 1) + confidence) / 
+        stats.totalVerifications
+      );
 
-    this.stats.lastUpdated = new Date().toISOString();
-    await this.saveStats();
+      // Update common flags
+      flags.forEach(flag => {
+        const existingFlag = stats.commonFlags.find(f => f.type === flag.type);
+        if (existingFlag) {
+          existingFlag.count++;
+        } else {
+          stats.commonFlags.push({ type: flag.type, count: 1 });
+        }
+      });
+
+      stats.lastUpdated = new Date().toISOString();
+
+      // Save updated stats
+      await this.cache.set('verification_stats', JSON.stringify(stats));
+    } catch (error) {
+      logger.error('Error recording verification stats:', error);
+    }
   }
 
   async getStats(): Promise<VerificationStats> {

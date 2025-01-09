@@ -44,22 +44,19 @@ export function findMockCompany(query: CompanyDetails): VerificationResult | nul
   if (!company) return null;
 
   return {
-    verified: true,
-    score: 0.9,
-    source: 'MOCK',
+    isVerified: true,
     details: {
       name: company.name,
       registrationNumber: company.registrationNumber,
-      jurisdiction: company.jurisdiction,
       status: company.status as 'active' | 'inactive' | 'unknown',
+      jurisdiction: company.jurisdiction,
       incorporationDate: company.incorporationDate,
       address: company.address
     },
-    verificationDate: new Date(),
     metadata: {
       verifiedAt: new Date().toISOString(),
-      source: 'opencorporates',
-      confidence: 85
+      source: 'MOCK',
+      confidence: 0.9
     }
   };
 }

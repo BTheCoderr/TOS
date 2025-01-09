@@ -1,3 +1,6 @@
+// Add empty export to make it a module
+export {};
+
 interface JobPosting {
   id: string;
   companyId: string;

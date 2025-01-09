@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import verificationRoutes from '../routes/api/verification';
+import verificationRoutes from './routes/verification';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

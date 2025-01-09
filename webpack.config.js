@@ -1,7 +1,10 @@
 const webpack = require('webpack');
+const path = require('path');
 
 module.exports = {
+  entry: './src/client/index.tsx',
   resolve: {
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
     fallback: {
       "querystring": require.resolve("querystring-es3"),
       "vm": require.resolve("vm-browserify"),

@@ -1,7 +1,8 @@
 import express from 'express';
 import { InMemoryVerificationCache } from '../../services/cache';
+import { InMemoryStatsCache } from '../../services/cache/InMemoryStatsCache';
 import { CompanyVerificationService } from '../../services/companyVerificationService';
-import { JobPostingVerificationService } from '../../services/jobPostingVerificationService';
+import { JobPostingVerificationService, FlaggedJobsResponse, JobStatusUpdate } from '../../services/jobPostingVerificationService';
 import { DuplicateDetectionService } from '../../services/duplicateDetectionService';
 import { validateApiKey } from '../../middleware/auth';
 import { rateLimiter } from '../../middleware/rateLimiter';
@@ -24,6 +25,7 @@ const router = express.Router();
 
 // Initialize caches
 const verificationCache = new InMemoryVerificationCache();
+const statsCache = new InMemoryStatsCache();
 
 // Initialize services with config
 const config: ApiConfig = {
@@ -124,43 +126,31 @@ router.post('/validate-job', validateApiKey, rateLimiter, async (req, res) => {
 router.get('/flagged-jobs', validateApiKey, async (req, res) => {
   try {
     const { page = '1', limit = '10', severity } = req.query;
-    const flaggedJobs = await jobVerificationService.getFlaggedJobs(
-      Number(page),
-      Number(limit),
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    
+    const response: FlaggedJobsResponse = await jobVerificationService.getFlaggedJobs(
+      pageNum,
+      limitNum,
       {
         severity: severity as string
       }
     );
 
-    if (!flaggedJobs) {
-      return res.json({
-        success: true,
-        data: {
-          jobs: [],
-          pagination: {
-            page: Number(page),
-            limit: Number(limit),
-            total: 0,
-            pages: 0
-          }
-        }
-      });
-    }
-
     res.json({
       success: true,
       data: {
-        jobs: flaggedJobs.jobs || [],
+        jobs: response.jobs,
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: flaggedJobs.total || 0,
-          pages: Math.ceil((flaggedJobs.total || 0) / Number(limit))
+          page: pageNum,
+          limit: limitNum,
+          total: response.total,
+          pages: Math.ceil(response.total / limitNum)
         }
       }
     });
   } catch (error) {
-    console.error('Error fetching flagged jobs:', error);
+    logger.error('Error fetching flagged jobs:', error);
     res.status(500).json({
       error: 'Failed to fetch flagged jobs',
       code: 'FLAGGED_JOBS_ERROR'
@@ -182,13 +172,15 @@ router.put('/jobs/:jobId/status', validateApiKey, async (req, res) => {
       });
     }
 
-    const result = await jobVerificationService.updateJobStatus(jobId, {
-      status,
+    const updateData: JobStatusUpdate = {
+      status: status as 'APPROVED' | 'REJECTED' | 'PENDING_REVIEW',
       resolution,
       notes,
       updatedBy: req.user?.id,
       updatedAt: new Date()
-    });
+    };
+
+    const result = await jobVerificationService.updateJobStatus(jobId, updateData);
 
     res.json({
       success: true,

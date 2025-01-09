@@ -1,9 +1,14 @@
 import express from 'express';
-import { JobPostingVerificationService } from '../services/jobPostingVerificationService';
-import { CompanyVerificationService } from '../services/companyVerificationService';
-import { InMemoryVerificationCache } from '../services/verificationCache';
-import { StatisticsService } from '../services/statisticsService';
-import { CompanyVerificationRequest } from '../types/verification';
+import { JobPostingVerificationService } from '../../services/jobPostingVerificationService.js';
+import { CompanyVerificationService } from '../../services/companyVerificationService.js';
+import { InMemoryVerificationCache } from '../../services/verificationCache.js';
+import { StatisticsService } from '../../services/statisticsService.js';
+import { CompanyVerificationRequest } from '../../types/verification.js';
+import { logger } from '../../utils/logger.js';
+import { validateApiKey } from '../../middleware/auth.js';
+import { rateLimiter } from '../../middleware/rateLimiter.js';
+import { ApiConfig } from '../../types/api.js';
+import { InMemoryStatsCache } from '../../services/cache/InMemoryStatsCache.js';
 
 const router = express.Router();
 
@@ -37,6 +42,9 @@ router.post('/verify/job', async (req, res) => {
     
     // Basic validation
     if (!jobPosting.title || !jobPosting.company || !jobPosting.description) {
+      logger.warn('Missing required fields in job posting', { 
+        missing: ['title', 'company', 'description'].filter(field => !jobPosting[field])
+      });
       return res.status(400).json({
         error: 'Missing required fields',
         required: ['title', 'company', 'description']
@@ -47,14 +55,19 @@ router.post('/verify/job', async (req, res) => {
     
     // Record statistics
     await statisticsService.recordVerification(
-      result.isVerified,
-      result.confidence,
-      result.flags
+      result.verificationStatus,
+      result.metadata.confidence,
+      result.flags || []
     );
+
+    logger.info('Job verification completed', { 
+      status: result.verificationStatus,
+      jobId: result.jobId
+    });
 
     res.json(result);
   } catch (error) {
-    console.error('Job verification failed:', error);
+    logger.error('Job verification failed:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to verify job posting'
@@ -77,10 +90,9 @@ router.post('/verify-company', validateApiKey, rateLimiter, async (req, res) => 
     const result = await companyVerificationService.verifyCompany({
       name,
       registrationNumber,
-      jurisdiction: jurisdiction || 'UNKNOWN',
-      status: 'unknown',
-      location: address || 'Unknown',
-      address
+      location: jurisdiction || 'UNKNOWN',
+      address,
+      industry: undefined
     });
 
     res.json({
@@ -102,9 +114,10 @@ router.post('/verify-company', validateApiKey, rateLimiter, async (req, res) => 
 router.get('/stats', async (req, res) => {
   try {
     const stats = await statisticsService.getStats();
+    logger.debug('Retrieved verification stats', { stats });
     res.json(stats);
   } catch (error) {
-    console.error('Failed to get statistics:', error);
+    logger.error('Failed to get statistics:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to retrieve verification statistics'
@@ -116,9 +129,10 @@ router.get('/stats', async (req, res) => {
 router.get('/stats/detailed', async (req, res) => {
   try {
     const detailedStats = await statisticsService.getDetailedStats();
+    logger.debug('Retrieved detailed verification stats');
     res.json(detailedStats);
   } catch (error) {
-    console.error('Failed to get detailed statistics:', error);
+    logger.error('Failed to get detailed statistics:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to retrieve detailed verification statistics'
