@@ -3,31 +3,27 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-interface Config {
-  LINKEDIN_CLIENT_ID: string;
-  LINKEDIN_CLIENT_SECRET: string;
-  LINKEDIN_REDIRECT_URI: string;
-  PORT: number;
-  NODE_ENV: string;
-}
+function validateEnvVariables() {
+  const required = [
+    'OPENCORPORATES_API_KEY',
+    'NODE_ENV'
+  ];
 
-// Validate required environment variables
-const requiredEnvVars = [
-  'LINKEDIN_CLIENT_ID',
-  'LINKEDIN_CLIENT_SECRET',
-  'LINKEDIN_REDIRECT_URI'
-];
-
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(`Missing required environment variable: ${envVar}`);
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
 }
 
-export const config: Config = {
-  LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID!,
-  LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET!,
-  LINKEDIN_REDIRECT_URI: process.env.LINKEDIN_REDIRECT_URI!,
-  PORT: parseInt(process.env.PORT || '3000', 10),
-  NODE_ENV: process.env.NODE_ENV || 'development'
-}; 
+// Validate on startup
+validateEnvVariables();
+
+export const config = {
+  opencorporates: {
+    apiKey: process.env.OPENCORPORATES_API_KEY!,
+    baseUrl: process.env.API_BASE_URL || 'https://api.opencorporates.com/v0.4',
+  },
+  env: process.env.NODE_ENV!,
+  port: parseInt(process.env.PORT || '3000', 10),
+} as const; 

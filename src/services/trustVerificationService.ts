@@ -1,22 +1,35 @@
 import LinkedInAPI from '../linkedin/api';
 import BetaAnalytics from '../beta/analytics';
-import { config } from '../config';
+import RedisService from './redisService';
+import { linkedInConfig } from '../config/linkedin';
+import { logger } from '../utils/logger';
 
-class TrustVerificationService {
+export class TrustVerificationService {
   private linkedInAPI: LinkedInAPI;
   private analytics: BetaAnalytics;
+  private cache: RedisService;
 
   constructor() {
     this.linkedInAPI = new LinkedInAPI({
-      clientId: config.LINKEDIN_CLIENT_ID,
-      clientSecret: config.LINKEDIN_CLIENT_SECRET,
-      redirectUri: config.LINKEDIN_REDIRECT_URI
+      clientId: linkedInConfig.clientId,
+      clientSecret: linkedInConfig.clientSecret,
+      redirectUri: linkedInConfig.redirectUri,
+      scope: ['r_liteprofile', 'r_emailaddress', 'r_organization_admin']
     });
     this.analytics = new BetaAnalytics();
+    this.cache = RedisService.getInstance();
   }
 
   async verifyJobPosting(pageId: string, jobId: string, userId: string) {
     try {
+      // Check cache first
+      const cacheKey = `job:${pageId}:${jobId}`;
+      const cachedResult = await this.cache.get(cacheKey, 'job_verification');
+      if (cachedResult) {
+        await this.analytics.trackEvent('cache:hit', userId, { type: 'job_verification' });
+        return cachedResult;
+      }
+
       // Track API call
       const startTime = Date.now();
       
@@ -25,10 +38,10 @@ class TrustVerificationService {
       
       // Track response time
       const responseTime = Date.now() - startTime;
-      this.analytics.trackEvent('api:call', userId, { responseTime });
+      await this.analytics.trackEvent('api:call', userId, { responseTime });
 
       if (!jobVerification.isValid) {
-        this.analytics.trackEvent('post:flagged', userId, {
+        await this.analytics.trackEvent('post:flagged', userId, {
           pageId,
           jobId,
           reason: 'invalid_job_posting'
@@ -43,7 +56,7 @@ class TrustVerificationService {
       // Verify the company page
       const pageVerification = await this.linkedInAPI.validatePageActivity(pageId);
       if (!pageVerification.isValid) {
-        this.analytics.trackEvent('post:flagged', userId, {
+        await this.analytics.trackEvent('post:flagged', userId, {
           pageId,
           jobId,
           reason: 'invalid_company_page'
@@ -57,9 +70,9 @@ class TrustVerificationService {
 
       // Calculate trust score
       const trustScore = this.calculateTrustScore(jobVerification.details, pageVerification.details);
-      this.analytics.trackEvent('trustScore:generated', userId, { trustScore });
+      await this.analytics.trackEvent('trustScore:generated', userId, { trustScore });
 
-      return {
+      const result = {
         verified: true,
         trustScore,
         details: {
@@ -68,24 +81,36 @@ class TrustVerificationService {
         }
       };
 
-    } catch (error) {
-      this.analytics.trackEvent('api:error', userId, { error: error.message });
+      // Cache the result
+      await this.cache.set('job', `${pageId}:${jobId}`, result);
+
+      return result;
+    } catch (error: any) {
+      logger.error('Job verification error:', error);
+      await this.analytics.trackEvent('api:error', userId, { error: error?.message || 'Unknown error occurred' });
       throw error;
     }
   }
 
   async verifyJobPoster(memberId: string, userId: string) {
     try {
+      // Check cache first
+      const cachedResult = await this.cache.get('member', memberId);
+      if (cachedResult) {
+        await this.analytics.trackEvent('cache:hit', userId, { type: 'member_verification' });
+        return cachedResult;
+      }
+
       const startTime = Date.now();
       
       // Verify the job poster
       const memberVerification = await this.linkedInAPI.authenticateJobPoster(memberId);
       
       const responseTime = Date.now() - startTime;
-      this.analytics.trackEvent('api:call', userId, { responseTime });
+      await this.analytics.trackEvent('api:call', userId, { responseTime });
 
       if (!memberVerification.isAuthentic) {
-        this.analytics.trackEvent('post:flagged', userId, {
+        await this.analytics.trackEvent('post:flagged', userId, {
           memberId,
           reason: 'invalid_member'
         });
@@ -100,9 +125,9 @@ class TrustVerificationService {
       const employmentHistory = await this.linkedInAPI.getMemberEmploymentHistory(memberId);
       const verificationScore = this.calculateMemberScore(memberVerification.details, employmentHistory);
 
-      this.analytics.trackEvent('trustScore:generated', userId, { verificationScore });
+      await this.analytics.trackEvent('trustScore:generated', userId, { verificationScore });
 
-      return {
+      const result = {
         verified: true,
         verificationScore,
         details: {
@@ -111,48 +136,50 @@ class TrustVerificationService {
         }
       };
 
-    } catch (error) {
-      this.analytics.trackEvent('api:error', userId, { error: error.message });
+      // Cache the result
+      await this.cache.set('member', memberId, result);
+
+      return result;
+    } catch (error: any) {
+      logger.error('Member verification error:', error);
+      await this.analytics.trackEvent('api:error', userId, { error: error?.message || 'Unknown error occurred' });
       throw error;
     }
   }
 
-  private calculateTrustScore(jobData: any, pageData: any): number {
+  private calculateTrustScore(jobDetails: any, pageDetails: any): number {
     // Implement trust score calculation logic
-    // This is a simple example - you should implement more sophisticated scoring
-    let score = 1.0;
-
-    // Factor in page followers
-    score *= Math.min(pageData.followersCount / 1000, 1);
-
-    // Factor in page activity
-    const daysSinceLastActivity = (Date.now() - pageData.lastActivityTimestamp) / (1000 * 60 * 60 * 24);
-    score *= Math.max(1 - (daysSinceLastActivity / 30), 0);
-
-    return Math.min(Math.max(score, 0), 1);
+    let score = 0;
+    
+    // Company page factors (40% weight)
+    if (pageDetails.followersCount > 1000) score += 20;
+    if (pageDetails.verified) score += 20;
+    
+    // Job posting factors (60% weight)
+    if (jobDetails.status === 'ACTIVE') score += 30;
+    const postAge = Date.now() - new Date(jobDetails.postedDate).getTime();
+    if (postAge < 30 * 24 * 60 * 60 * 1000) score += 30; // Less than 30 days old
+    
+    return score;
   }
 
-  private calculateMemberScore(memberData: any, employmentHistory: any[]): number {
+  private calculateMemberScore(memberDetails: any, employmentHistory: any[]): number {
     // Implement member verification score calculation
-    // This is a simple example - you should implement more sophisticated scoring
-    let score = 1.0;
-
-    // Factor in profile completeness
-    if (!memberData.profilePicture) score *= 0.8;
-    if (!memberData.emailAddress) score *= 0.7;
-
-    // Factor in employment history
-    if (employmentHistory.length === 0) {
-      score *= 0.5;
-    } else {
-      score *= Math.min(employmentHistory.length / 3, 1);
+    let score = 0;
+    
+    // Profile completeness (50% weight)
+    if (memberDetails.emailAddress) score += 15;
+    if (memberDetails.profilePicture) score += 15;
+    if (memberDetails.currentPosition) score += 20;
+    
+    // Employment history (50% weight)
+    if (employmentHistory.length > 0) {
+      score += 25;
+      const currentEmployment = employmentHistory.find(job => !job.endDate);
+      if (currentEmployment) score += 25;
     }
-
-    return Math.min(Math.max(score, 0), 1);
-  }
-
-  getAnalytics(startTime: number, endTime: number) {
-    return this.analytics.generateReport(startTime, endTime);
+    
+    return score;
   }
 }
 

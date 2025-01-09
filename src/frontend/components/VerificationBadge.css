@@ -1,0 +1,78 @@
+.verification-badge {
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  max-width: 300px;
+}
+
+.verification-badge:hover {
+  transform: translateY(-2px);
+}
+
+.verification-badge.green {
+  background-color: #e7f7ed;
+  border: 1px solid #34d399;
+}
+
+.verification-badge.yellow {
+  background-color: #fef9c3;
+  border: 1px solid #fbbf24;
+}
+
+.verification-badge.red {
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+}
+
+.badge-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.badge-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.green .badge-icon {
+  color: #059669;
+}
+
+.yellow .badge-icon {
+  color: #d97706;
+}
+
+.red .badge-icon {
+  color: #dc2626;
+}
+
+.badge-text {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.badge-score {
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.badge-details {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 8px;
+  font-size: 14px;
+}
+
+.detail-item {
+  margin-bottom: 4px;
+}
+
+.error-message {
+  color: #dc2626;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 500;
+} 

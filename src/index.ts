@@ -1,32 +1,37 @@
 import express from 'express';
 import cors from 'cors';
-import { config } from './config';
-import verificationRoutes from './routes/verificationRoutes';
+import dotenv from 'dotenv';
+import verificationRoutes from './routes/verification';
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api', verificationRoutes);
+app.use('/api/v1', verificationRoutes);
 
-// Health check
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Error handling
+// Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
+  console.error('Unhandled error:', err);
   res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
 
 // Start server
-app.listen(config.PORT, () => {
-  console.log(`Server running on port ${config.PORT} in ${config.NODE_ENV} mode`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
 }); 

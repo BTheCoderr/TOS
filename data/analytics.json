@@ -1,0 +1,18 @@
+[
+  {
+    "type": "api:call",
+    "userId": "test-user",
+    "timestamp": 1736364394773,
+    "data": {
+      "responseTime": 502
+    }
+  },
+  {
+    "type": "trustScore:generated",
+    "userId": "test-user",
+    "timestamp": 1736364395276,
+    "data": {
+      "trustScore": 0.9666666666666667
+    }
+  }
+]

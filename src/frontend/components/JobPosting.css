@@ -1,0 +1,111 @@
+.job-posting {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 16px 0;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.job-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.job-title-section {
+  flex: 1;
+  margin-right: 24px;
+}
+
+.job-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.company {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.location, .posted-date {
+  display: flex;
+  align-items: center;
+}
+
+.location::before {
+  content: "📍";
+  margin-right: 4px;
+}
+
+.posted-date::before {
+  content: "📅";
+  margin-right: 4px;
+}
+
+.verification-section {
+  min-width: 250px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+  background-color: #f3f4f6;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.job-description {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 20px 0;
+}
+
+.job-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.apply-button, .save-button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apply-button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+}
+
+.apply-button:hover {
+  background-color: #1d4ed8;
+}
+
+.save-button {
+  background-color: white;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.save-button:hover {
+  background-color: #eff6ff;
+} 
