@@ -1,5 +1,11 @@
 # TrustOS Plugin
 
+<!-- repo-intro:start -->
+**Project snapshot:** TrustOS Plugin is a TypeScript full-stack prototype for business verification and trust workflows, pairing a React interface with an Express API and structured logging.
+
+**What it demonstrates:** TypeScript · React · Express · Material UI · production-oriented project structure.
+<!-- repo-intro:end -->
+
 A TypeScript and React-based plugin for enhancing trust and verification in business operations.
 
 ## Overview
